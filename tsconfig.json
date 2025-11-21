@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",  // Changed from "nodenext"
+    "target": "ES2022",    // Changed from "esnext" - better for learning
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "strict": true,
+    "esModuleInterop": true,  // Add this - helps with CommonJS imports
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "./src"
+  }
+}
