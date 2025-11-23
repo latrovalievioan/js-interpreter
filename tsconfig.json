@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "noEmitOnError": false,
     "module": "commonjs",  // Changed from "nodenext"
     "target": "ES2022",    // Changed from "esnext" - better for learning
     "sourceMap": true,
