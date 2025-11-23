@@ -1,1 +1,2 @@
-console.log("go6o", 2 + 3)
+const x = 5
+console.log(x, 3, 'x')

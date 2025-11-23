@@ -1,5 +1,5 @@
 import acorn from "acorn";
-import { LiteralValueType } from "./types";
+import { LiteralValueType, VariableDeclarationKind } from "./types";
 import { readFileSync } from "node:fs";
 
 const input = readFileSync("./input.js", "utf8");
@@ -30,6 +30,10 @@ class Visitor {
                 return this.visitMemberExpression(node);
             case "Identifier":
                 return this.visitIdentifier(node);
+            case "VariableDeclaration":
+                return this.visitVariableDeclaration(node);
+            case "VariableDeclarator":
+                return this.visitVariableDeclarator(node);
             default:
                 throw new Error("Unhandled node type");
         }
@@ -71,22 +75,49 @@ class Visitor {
     visitCallExpression(callExpressionNode: acorn.CallExpression) {
         const fn = this.visit(callExpressionNode.callee);
 
-        const visitedArgs = callExpressionNode.arguments.map((arg) => this.visit(arg))
+        const visitedArgs = callExpressionNode.arguments.map((arg) => {
+            return this.visit(arg);
+        });
 
-        fn(...visitedArgs)
+        fn(...visitedArgs);
     }
 
     visitMemberExpression(memberExpressionNode: acorn.MemberExpression): any {
-        const objectName = this.visit(memberExpressionNode.object);
-        const propertyName = this.visit(memberExpressionNode.property);
+        const object = this.visit(memberExpressionNode.object);
 
-        const res = this.environment.getBinding(objectName)[propertyName]
+        if(memberExpressionNode.property.type === 'Identifier') {
+            const res = object[memberExpressionNode.property.name];
+            return res;
+        }
 
-        return res
+        // TODO: support bracket access
     }
 
     visitIdentifier(identifierNode: acorn.Identifier) {
-        return identifierNode.name;
+        return this.environment.getBinding(identifierNode.name);
+    }
+
+    visitVariableDeclaration(variableDeclarationNode: acorn.VariableDeclaration) {
+        const { kind } = variableDeclarationNode;
+        for (const declaration of variableDeclarationNode.declarations) {
+            const { name, value } = this.visit(declaration);
+
+            this.environment.setBindings({ name, value, kind });
+        }
+    }
+
+    visitVariableDeclarator(variableDeclaratorNode: acorn.VariableDeclarator) {
+        if(variableDeclaratorNode.id.type === 'Identifier') {
+            const value = variableDeclaratorNode.init
+                ? this.visit(variableDeclaratorNode.init)
+                : undefined;
+
+            const result: any = { name: variableDeclaratorNode.id.name, value };
+
+            return result;
+        }
+
+        //TODO: handle destructuring etc
     }
 }
 
@@ -106,14 +137,32 @@ class Evaluator {
 }
 
 class Environment {
-    private bindings: Record<string, any> = {
-        console: {
+    constructor(private bindings: Map<string, any> = new Map()) {
+        this.bindings.set("console", {
             log: (...args: any[]) => console.log(...args),
-        },
-    };
+        });
+    }
 
     getBinding(name: string) {
-        return this.bindings[name]
+        if (!this.bindings.has(name)) {
+            throw new Error(`${name} is not defined`);
+        }
+
+        return this.bindings.get(name);
+    }
+
+    //TODO: handle let vs var
+    //TODO: handle using and await using
+    setBindings(params: {
+        name: string;
+        value: any;
+        kind: VariableDeclarationKind;
+    }) {
+        if (params.kind === "const" && this.bindings.has(params.name)) {
+            throw new Error("Cannot reassign a const value");
+        }
+
+        this.bindings.set(params.name, params.value);
     }
 }
 
